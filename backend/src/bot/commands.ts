@@ -4,8 +4,9 @@ import db from '../db/database';
 import { initSchema } from '../db/schema';
 import { calculateDebts, applyMargin } from '../core/settlement';
 import { startPaymentTimer } from '../core/timeout';
-import { startQuiz } from '../game/engine';
-import { resetPayoutStatus } from '../ton/payout';
+import { cancelGameTimer } from '../core/timeout';
+import { findTripByMember, recordScore, finalizeGame, getGameSession } from '../game/engine';
+import { resetPayoutStatus, executePayouts } from '../ton/payout';
 
 // In-memory pending expenses: maps a unique key to expense data awaiting beneficiary selection
 interface PendingExpense {
@@ -340,10 +341,10 @@ export function registerCommands(bot: Telegraf<Context>): void {
       msg += `  ${name}: *${amountDue.toFixed(9)} TON* (${debt.toFixed(9)} + margin)\n`;
     }
 
-    msg += '\n*💰 Will receive from the bot (after quiz):*\n';
+    msg += '\n*💰 Will receive from the bot (after game):*\n';
     for (const creditor of creditors) {
       const name = creditor.username || `User_${creditor.telegram_id}`;
-      msg += `  ${name}: *${creditor.net_balance.toFixed(9)} TON* ± quiz bonus\n`;
+      msg += `  ${name}: *${creditor.net_balance.toFixed(9)} TON* ± game bonus\n`;
     }
 
     msg += '\n⏱️ Debtors have *10 minutes* to pay via TON Connect.\n';
@@ -359,7 +360,112 @@ export function registerCommands(bot: Telegraf<Context>): void {
       ]),
     });
   });
+
+  // =============================================
+  // WEB_APP_DATA: receive scores from external game
+  // =============================================
+  bot.on('message', async (ctx) => {
+    const msg = ctx.message as any;
+    if (!msg.web_app_data) return;
+
+    const scoreStr = msg.web_app_data.data;
+    const rawScore = parseInt(scoreStr, 10);
+    if (isNaN(rawScore)) {
+      return ctx.reply('Invalid game score received.');
+    }
+
+    const telegramId = ctx.from.id;
+    const match = findTripByMember(telegramId);
+    if (!match) {
+      return ctx.reply('No active game found for you.');
+    }
+
+    const { tripId, memberId } = match;
+    const result = recordScore(tripId, memberId, rawScore);
+
+    if (!result.recorded) {
+      if (result.duplicate) {
+        return ctx.reply('You have already submitted your score!', { reply_markup: { remove_keyboard: true } });
+      }
+      return ctx.reply('Could not record your score.');
+    }
+
+    const bonusMsg = result.bonusPct > 0
+      ? `\nSpender advantage: +${result.bonusPct}% (${result.rawScore} x ${(1 + result.bonusPct / 100).toFixed(2)} = ${result.finalScore})`
+      : '';
+    await ctx.reply(
+      `Score received: ${result.finalScore} points${bonusMsg}`,
+      { reply_markup: { remove_keyboard: true } }
+    );
+
+    if (result.allPlayed) {
+      cancelGameTimer(tripId);
+      await finalizeAndPayout(tripId, bot);
+    }
+  });
 }
+
+// =============================================
+// Helper: finalize game and execute payouts
+// =============================================
+
+async function finalizeAndPayout(tripId: number, bot: Telegraf<Context>): Promise<void> {
+  const session = getGameSession(tripId);
+  const chatId = session?.chatId;
+
+  try {
+    const results = finalizeGame(tripId);
+
+    // Send leaderboard to group chat
+    if (chatId) {
+      let msg = '🏆 Game Over! Results:\n\n';
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+        const name = r.username || `Member ${r.member_id}`;
+        const bonusStr = r.bonus_pct > 0 ? ` (+${r.bonus_pct}% spender bonus)` : '';
+        const payoutStr = r.payout_delta > 0 ? `${r.payout_delta.toFixed(9)} TON` : 'No payout';
+        msg += `${medal} ${name} — ${r.score} pts${bonusStr} — ${payoutStr}\n`;
+      }
+
+      await bot.telegram.sendMessage(chatId, msg);
+
+      // Execute TON payouts in background
+      executePayouts(tripId)
+        .then((payoutResults) => {
+          const successful = payoutResults.filter((p) => p.success);
+          const failed = payoutResults.filter((p) => !p.success);
+
+          if (successful.length === 0 && failed.length === 0) return;
+
+          let payMsg = '💸 Payouts Complete!\n\n';
+          for (const p of successful) {
+            payMsg += `✅ ${p.username}: ${p.amount.toFixed(9)} TON sent\n`;
+          }
+          for (const p of failed) {
+            payMsg += `❌ ${p.username}: ${p.amount.toFixed(9)} TON failed\n`;
+          }
+
+          bot.telegram.sendMessage(chatId, payMsg)
+            .catch((err) => console.error('Failed to send payout notification:', err));
+        })
+        .catch((err) => {
+          console.error('Payout execution failed:', err);
+          bot.telegram.sendMessage(chatId, '❌ Payout Error\nAutomatic payouts failed.')
+            .catch((sendErr) => console.error('Failed to send error notification:', sendErr));
+        });
+    }
+  } catch (err) {
+    console.error('Failed to finalize game:', err);
+    if (chatId) {
+      bot.telegram.sendMessage(chatId, '❌ Failed to finalize game results.')
+        .catch(() => {});
+    }
+  }
+}
+
+// Export for use by timeout handler
+export { finalizeAndPayout };
 
 // =============================================
 // Helper: build beneficiary selection keyboard

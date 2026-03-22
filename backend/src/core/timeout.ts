@@ -47,3 +47,35 @@ export function cancelPaymentTimer(tripId: number): void {
 export function hasActiveTimer(tripId: number): boolean {
   return activeTimers.has(tripId);
 }
+
+// =============================================
+// Game timer (for external mini-game timeout)
+// =============================================
+
+const activeGameTimers = new Map<number, NodeJS.Timeout>();
+
+export function startGameTimer(
+  tripId: number,
+  timeoutMs: number,
+  onTimeout: (tripId: number) => void
+): void {
+  cancelGameTimer(tripId);
+
+  const timer = setTimeout(() => {
+    const trip = queries.getTripById(tripId);
+    if (!trip || trip.status !== 'playing') return;
+
+    onTimeout(tripId);
+    activeGameTimers.delete(tripId);
+  }, timeoutMs);
+
+  activeGameTimers.set(tripId, timer);
+}
+
+export function cancelGameTimer(tripId: number): void {
+  const timer = activeGameTimers.get(tripId);
+  if (timer) {
+    clearTimeout(timer);
+    activeGameTimers.delete(tripId);
+  }
+}

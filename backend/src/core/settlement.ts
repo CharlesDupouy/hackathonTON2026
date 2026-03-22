@@ -90,9 +90,9 @@ export function calculateSpenderAdvantage(tripId: number): Map<number, number> {
 
   for (const member of members) {
     const paid = paidMap.get(member.id) || 0;
-    // Bonus: 0% at average, up to 50% max for the biggest spender
+    // Bonus: 0% at average, up to 15% max for the biggest spender
     const ratio = avgPaid > 0 ? (paid / avgPaid) : 1;
-    const bonus = Math.min(Math.max((ratio - 1) * 50, 0), 50);
+    const bonus = Math.min(Math.max((ratio - 1) * 15, 0), 15);
     advantages.set(member.id, Math.round(bonus * 100) / 100);
   }
 

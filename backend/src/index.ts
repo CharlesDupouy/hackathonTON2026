@@ -10,9 +10,9 @@ import { registerCallbacks } from './bot/callbacks';
 import { initWallet, getWalletAddress } from './ton/wallet';
 import * as queries from './db/queries';
 import { verifyPayment } from './ton/payments';
-import { executePayouts } from './ton/payout';
-import { startQuiz, submitAnswer, endQuiz, getQuizSession } from './game/engine';
-import { cancelPaymentTimer } from './core/timeout';
+import { startGame, recordScore, finalizeGame } from './game/engine';
+import { finalizeAndPayout } from './bot/commands';
+import { cancelPaymentTimer, startGameTimer, cancelGameTimer } from './core/timeout';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -119,10 +119,9 @@ async function main() {
     const result = verifyPayment(tripId, member.id, txHash);
 
     if (result.allPaid) {
-      // All payments received — cancel timeout and start quiz
+      // All payments received — cancel timeout and start game
       cancelPaymentTimer(tripId);
 
-      // Get the trip to calculate prize pool
       const trip = queries.getTripById(tripId);
       if (trip) {
         const payments = queries.getPayments(tripId);
@@ -135,97 +134,54 @@ async function main() {
           .reduce((sum, b) => sum + Math.abs(b.net_balance), 0);
         const prizePool = totalPaid - totalOriginalDebt;
 
-        startQuiz(tripId, prizePool > 0 ? prizePool : 0);
+        // Start game session
+        startGame(tripId, prizePool > 0 ? prizePool : 0, trip.chat_id);
+
+        // Start game timeout
+        const gameTimeoutMs = parseInt(process.env.GAME_TIMEOUT_MS || '300000');
+        startGameTimer(tripId, gameTimeoutMs, async (tid) => {
+          // Timeout: record 0 for members who didn't play, then finalize
+          const members = queries.getTripMembers(tid);
+          for (const m of members) {
+            recordScore(tid, m.id, 0); // no-op if already played
+          }
+          await finalizeAndPayout(tid, bot);
+          bot.telegram.sendMessage(trip.chat_id,
+            '⏰ Game timed out! Members who did not play received a score of 0.'
+          ).catch(() => {});
+        });
+
+        // Notify group
+        bot.telegram.sendMessage(trip.chat_id,
+          '🎮 All payments received! Check your private chat with me to play the game!'
+        ).catch((err) => console.error('Failed to send game notification to group:', err));
+
+        // Send game button to each member via DM
+        const gameUrl = process.env.GAME_WEB_APP_URL;
+        if (gameUrl) {
+          const members = queries.getTripMembers(tripId);
+          for (const m of members) {
+            bot.telegram.sendMessage(m.telegram_id,
+              '🎮 Time to play! Tap the button below to start the game.',
+              {
+                reply_markup: {
+                  keyboard: [[{ text: '🎮 Play!', web_app: { url: gameUrl } }]],
+                  resize_keyboard: true,
+                  one_time_keyboard: false,
+                },
+              }
+            ).catch((err) => {
+              console.error(`Failed to DM game button to ${m.username} (${m.telegram_id}):`, err.message);
+              bot.telegram.sendMessage(trip.chat_id,
+                `⚠️ Could not send game to ${m.username || 'a member'}. They need to start a private chat with me first!`
+              ).catch(() => {});
+            });
+          }
+        }
       }
     }
 
     res.json(result);
-  });
-
-  // GET /api/quiz/:tripId — Get quiz state
-  app.get('/api/quiz/:tripId', (req, res) => {
-    const tripId = parseInt(req.params.tripId);
-    const session = getQuizSession(tripId);
-
-    if (!session) {
-      return res.json({ error: 'No active quiz', questions: [], finished: false });
-    }
-
-    // Return questions without correct answers
-    const questions = session.questions.map(({ correctIndex, ...q }) => q);
-    res.json({
-      questions,
-      currentIndex: 0,
-      timePerQuestion: 15,
-      scores: [],
-      finished: false,
-    });
-  });
-
-  // POST /api/quiz/answer — Submit a quiz answer
-  app.post('/api/quiz/answer', (req, res) => {
-    const { tripId, memberTelegramId, questionId, answerIndex } = req.body;
-
-    const member = queries.getMember(tripId, memberTelegramId);
-    if (!member) {
-      return res.status(400).json({ error: 'Member not found' });
-    }
-
-    try {
-      const result = submitAnswer(tripId, member.id, questionId, answerIndex);
-      res.json(result);
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
-  });
-
-  // POST /api/quiz/end — End the quiz and get results, then trigger payouts
-  app.post('/api/quiz/end', (req, res) => {
-    const { tripId } = req.body;
-
-    try {
-      const results = endQuiz(tripId);
-      res.json({ success: true, results });
-
-      // Fire-and-forget: execute TON payouts in background
-      const trip = queries.getTripById(tripId);
-      if (trip) {
-        console.log(`🚀 Starting payouts for trip ${tripId}, chat_id=${trip.chat_id}`);
-        executePayouts(tripId)
-          .then((payoutResults) => {
-            console.log(`📊 Payout results for trip ${tripId}:`, JSON.stringify(payoutResults));
-            const successful = payoutResults.filter((p) => p.success);
-            const failed = payoutResults.filter((p) => !p.success);
-
-            if (successful.length === 0 && failed.length === 0) {
-              console.log(`ℹ️ No payout results for trip ${tripId} (already completed or empty)`);
-              return;
-            }
-
-            let msg = '💸 Payouts Complete!\n\n';
-            for (const p of successful) {
-              msg += `✅ ${p.username}: ${p.amount.toFixed(9)} TON sent\n`;
-            }
-            for (const p of failed) {
-              msg += `❌ ${p.username}: ${p.amount.toFixed(9)} TON failed\n`;
-            }
-
-            console.log(`📤 Sending payout notification to chat ${trip.chat_id}`);
-            bot.telegram.sendMessage(trip.chat_id, msg)
-              .then(() => console.log(`✅ Payout notification sent to chat ${trip.chat_id}`))
-              .catch((sendErr) => console.error(`❌ Failed to send payout notification:`, sendErr));
-          })
-          .catch((err) => {
-            console.error('❌ Payout execution failed:', err);
-            bot.telegram.sendMessage(
-              trip.chat_id,
-              '❌ Payout Error\nAutomatic payouts failed. Please contact the admin.'
-            ).catch((sendErr) => console.error('❌ Failed to send error notification:', sendErr));
-          });
-      }
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
   });
 
   // GET /api/wallet — Get bot wallet address
