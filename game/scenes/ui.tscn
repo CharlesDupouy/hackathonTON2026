@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://c68ef7a04tctw"]
+
+[ext_resource type="Script" uid="uid://igp5cov8pavu" path="res://scripts/ui.gd" id="1_nt7q6"]
+[ext_resource type="FontFile" uid="uid://b4muee5dlmemo" path="res://assets/fonts/Titan_One/TitanOne-Regular.ttf" id="2_x4jx1"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_yev5y"]
+font = ExtResource("2_x4jx1")
+font_size = 31
+font_color = Color(0.91285694, 0.67322457, 0, 1)
+
+[node name="UI" type="Control" unique_id=2063150851 node_paths=PackedStringArray("timer_label", "score_label")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_nt7q6")
+timer_label = NodePath("Timer")
+score_label = NodePath("Score")
+
+[node name="Timer" type="Label" parent="." unique_id=501269150]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Timer: 45"
+label_settings = SubResource("LabelSettings_yev5y")
+
+[node name="Score" type="Label" parent="." unique_id=457432962]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 23.0
+grow_horizontal = 0
+text = "Score: 0"
+label_settings = SubResource("LabelSettings_yev5y")

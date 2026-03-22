@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://b1rx1nk57ht7p"]
+
+[ext_resource type="Script" uid="uid://cqb2q3lvb8nv4" path="res://scripts/fish_spawner.gd" id="1_mwyhs"]
+[ext_resource type="PackedScene" uid="uid://dk6im72w6aqvl" path="res://scenes/fish.tscn" id="2_auosd"]
+
+[sub_resource type="Curve2D" id="Curve2D_auosd"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 606)
+}
+point_count = 2
+
+[node name="FishSpawner" type="Path2D" unique_id=1036897693 node_paths=PackedStringArray("timer")]
+curve = SubResource("Curve2D_auosd")
+script = ExtResource("1_mwyhs")
+packed_fish = ExtResource("2_auosd")
+timer = NodePath("Timer")
+min_timer = null
+max_timer = null
+
+[node name="Timer" type="Timer" parent="." unique_id=247419359]
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

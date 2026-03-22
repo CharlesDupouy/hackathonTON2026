@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://bqardosff4kdo"]
+
+[ext_resource type="FontFile" uid="uid://bn8s2sxiqxfx" path="res://assets/fonts/Arvo/Arvo-Bold.ttf" id="1_nisex"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_w8006"]
+font = ExtResource("1_nisex")
+font_size = 33
+
+[node name="Label" type="Label" unique_id=1856106021]
+offset_left = -24.0
+offset_top = -82.0
+offset_right = 31.0
+offset_bottom = -41.0
+text = "+5"
+label_settings = SubResource("LabelSettings_w8006")

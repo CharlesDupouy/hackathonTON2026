@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="FishData" format=3 uid="uid://cb734whek2r7q"]
+
+[ext_resource type="Script" uid="uid://cc0e1y32lx57l" path="res://scripts/fish_data.gd" id="1_utt2p"]
+[ext_resource type="Texture2D" uid="uid://1vpgxcsi02da" path="res://assets/sprites/fishing_free/global_free_recoloured.png" id="2_cmtpn"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_21k1a"]
+atlas = ExtResource("2_cmtpn")
+region = Rect2(16, 0, 16, 16)
+
+[resource]
+script = ExtResource("1_utt2p")
+name = "hard"
+speed = 250.0
+perception_radius = 70.0
+value = 5
+texture = SubResource("AtlasTexture_21k1a")
+metadata/_custom_type_script = "uid://cc0e1y32lx57l"

@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dhare6clev5fm"]
+
+[ext_resource type="Script" uid="uid://c0bykm766kfx3" path="res://scripts/score_show.gd" id="1_iqko6"]
+[ext_resource type="PackedScene" uid="uid://bqardosff4kdo" path="res://scenes/IncreaseLabel.tscn" id="2_pbfbx"]
+[ext_resource type="PackedScene" uid="uid://i2j2foi5ewvj" path="res://scenes/number_pop_up.tscn" id="3_pla2i"]
+
+[node name="ScoreShow" type="Node" unique_id=2102058044]
+script = ExtResource("1_iqko6")
+vbox_pack = ExtResource("3_pla2i")
+
+[node name="Label" parent="." unique_id=1856106021 instance=ExtResource("2_pbfbx")]
+
+[node name="NumberPopUp" parent="." unique_id=2038171877 instance=ExtResource("3_pla2i")]

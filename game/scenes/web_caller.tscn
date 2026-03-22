@@ -1,0 +1,53 @@
+[gd_scene format=3 uid="uid://bxr0swt4xhjx5"]
+
+[ext_resource type="Script" uid="uid://daepitklkxyp6" path="res://scripts/web_caller.gd" id="1_uiilx"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_uiilx"]
+font_size = 50
+
+[node name="WebCaller" type="Node" unique_id=237317772 node_paths=PackedStringArray("label")]
+script = ExtResource("1_uiilx")
+label = NodePath("Label")
+
+[node name="Label" type="Label" parent="." unique_id=29388962]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -70.0
+offset_top = 51.0
+offset_right = 77.0
+offset_bottom = 141.0
+grow_horizontal = 2
+text = "Count: "
+label_settings = SubResource("LabelSettings_uiilx")
+
+[node name="Button" type="Button" parent="." unique_id=90218613]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -121.0
+offset_top = -70.0
+offset_right = 124.0
+offset_bottom = 84.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Increase!"
+
+[node name="Button2" type="Button" parent="." unique_id=1597843083]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -117.0
+offset_top = 128.0
+offset_right = 128.0
+offset_bottom = 282.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Send_result"
+
+[connection signal="pressed" from="Button" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="Button2" to="." method="_on_button_2_pressed"]

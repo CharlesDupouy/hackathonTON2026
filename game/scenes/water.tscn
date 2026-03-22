@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://bjv4nl810vwuw"]
+
+[ext_resource type="Shader" uid="uid://b2qpf03mw34m2" path="res://scripts/water.gdshader" id="1_bdk6y"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_s3811"]
+shader = ExtResource("1_bdk6y")
+shader_parameter/color = Color(0, 0.47101927, 0.9567763, 1)
+shader_parameter/frequency = 6.0
+shader_parameter/compress = 1.0
+shader_parameter/add_light = 0.0
+shader_parameter/scale = 0.41999999061216
+shader_parameter/speed = 0.49997763682404184
+shader_parameter/x_angle = 1.57
+shader_parameter/y_angle = 1.57
+shader_parameter/base_alpha = 0.8
+shader_parameter/refraction_ratio = 10.0
+shader_parameter/clear = 0.0
+shader_parameter/surf_sinpowder = 8.0
+shader_parameter/surf_speed = 1.0
+shader_parameter/surf_angle = 1.57
+shader_parameter/surf_magnitude = 0.0
+shader_parameter/s11 = 2.221
+shader_parameter/sinpowder = 8.0
+
+[node name="Water" type="Control" unique_id=2077002514]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ShadeSupport" type="ColorRect" parent="." unique_id=576975850]
+material = SubResource("ShaderMaterial_s3811")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

@@ -1,0 +1,85 @@
+[gd_scene format=3 uid="uid://dk6im72w6aqvl"]
+
+[ext_resource type="Script" uid="uid://dug1fcun1ubhc" path="res://scripts/fish.gd" id="1_8g0i4"]
+[ext_resource type="Texture2D" uid="uid://1vpgxcsi02da" path="res://assets/sprites/fishing_free/global_free_recoloured.png" id="2_nub35"]
+[ext_resource type="Script" uid="uid://cc0e1y32lx57l" path="res://scripts/fish_data.gd" id="2_pgks6"]
+[ext_resource type="Resource" uid="uid://dkvltota4rt5q" path="res://ressources/easy_fish_data.tres" id="3_6lgmd"]
+[ext_resource type="Resource" uid="uid://bdejc7gqbtd12" path="res://ressources/medium_fish_data.tres" id="4_wpvan"]
+[ext_resource type="Resource" uid="uid://cb734whek2r7q" path="res://ressources/hard_fish_data.tres" id="5_wpvan"]
+[ext_resource type="Texture2D" uid="uid://2y5ajojf7qy4" path="res://assets/sprites/buble.png" id="7_21k1a"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pgks6"]
+atlas = ExtResource("2_nub35")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="Animation" id="Animation_21k1a"]
+resource_name = "updown"
+loop_mode = 1
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(3),
+"points": PackedFloat32Array(0.03437245, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Sprite2D:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 3, 3, 3),
+"points": PackedFloat32Array(-0.3266177, -0.25, 0, 0.16666667, 1.6388073, 5.3744874, -0.26666668, -0.06469822, 0.26666668, 0.06469822, -5.0452495, -0.23333329, -0.06469822, 0.23333329, 0.06469822, -0.014126718, -0.100000024, -0.77638024, 0.100000024, 0.77638024),
+"times": PackedFloat32Array(-0.03333333, 0.3, 0.7, 1)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_bvcvt"]
+_data = {
+&"updown": SubResource("Animation_21k1a")
+}
+
+[sub_resource type="Curve" id="Curve_21k1a"]
+_data = [Vector2(0.011049718, 1), 0.0, 0.0, 0, 0, Vector2(0.65193367, 0.77628636), 0.0, 0.0, 0, 0, Vector2(1, 0.042505622), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_bvcvt"]
+curve = SubResource("Curve_21k1a")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_bvcvt"]
+particle_flag_disable_z = true
+direction = Vector3(1, 1, 0)
+spread = 16.364
+initial_velocity_min = 35.09
+initial_velocity_max = 114.04
+gravity = Vector3(0, 0, 0)
+scale_min = 0.25
+scale_max = 0.5
+alpha_curve = SubResource("CurveTexture_bvcvt")
+
+[node name="Fish" type="Node2D" unique_id=643389175 node_paths=PackedStringArray("sprite", "animation_player", "traiL")]
+script = ExtResource("1_8g0i4")
+fish_settings = Array[ExtResource("2_pgks6")]([ExtResource("3_6lgmd"), ExtResource("4_wpvan"), ExtResource("5_wpvan")])
+sprite = NodePath("Sprite2D")
+animation_player = NodePath("AnimationPlayer")
+traiL = NodePath("GPUParticles2D")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=308477099]
+position = Vector2(0.03437245, 0.08025918)
+scale = Vector2(4, 4)
+texture = SubResource("AtlasTexture_pgks6")
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=1343683855]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1372942368]
+libraries/ = SubResource("AnimationLibrary_bvcvt")
+
+[node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=939279632]
+texture = ExtResource("7_21k1a")
+process_material = SubResource("ParticleProcessMaterial_bvcvt")
+
+[connection signal="screen_exited" from="VisibleOnScreenNotifier2D" to="." method="_on_visible_on_screen_notifier_2d_screen_exited"]

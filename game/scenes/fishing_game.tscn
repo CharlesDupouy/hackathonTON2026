@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://bdsqvcwxivrnk"]
+
+[ext_resource type="PackedScene" uid="uid://dxip70ggxxqoq" path="res://scenes/fishing_rod.tscn" id="1_2yxpx"]
+[ext_resource type="PackedScene" uid="uid://bjv4nl810vwuw" path="res://scenes/water.tscn" id="1_vhdqh"]
+[ext_resource type="Script" uid="uid://dqlpnti2cuk2v" path="res://scripts/fishing_game.gd" id="1_vox6q"]
+[ext_resource type="PackedScene" uid="uid://b1rx1nk57ht7p" path="res://scenes/fish_spawner.tscn" id="2_wogwn"]
+[ext_resource type="PackedScene" uid="uid://c68ef7a04tctw" path="res://scenes/ui.tscn" id="5_7x2r5"]
+[ext_resource type="PackedScene" uid="uid://dhare6clev5fm" path="res://scenes/score_show.tscn" id="6_d6015"]
+
+[node name="FishingGame" type="Node" unique_id=576867901 node_paths=PackedStringArray("hud")]
+script = ExtResource("1_vox6q")
+hud = NodePath("UI")
+
+[node name="Background" type="ColorRect" parent="." unique_id=13970487]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0010963463, 0.09378759, 0.46486348, 1)
+
+[node name="FishSpawner" parent="." unique_id=1036897693 instance=ExtResource("2_wogwn")]
+position = Vector2(402, 133)
+min_timer = 0.825
+max_timer = 2.16
+
+[node name="Water" parent="." unique_id=2077002514 instance=ExtResource("1_vhdqh")]
+
+[node name="FishingRod" parent="." unique_id=1266390979 instance=ExtResource("1_2yxpx")]
+unique_name_in_owner = true
+position = Vector2(169, 674)
+angle_speed = 69.05
+max_angle = 29.63
+max_length = 272.61
+extending_speed = 274.505
+
+[node name="UI" parent="." unique_id=2063150851 instance=ExtResource("5_7x2r5")]
+
+[node name="ScoreShow" parent="." unique_id=2102058044 instance=ExtResource("6_d6015")]

@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://bdsqvcwxivrnk"]
+
+[ext_resource type="PackedScene" uid="uid://dxip70ggxxqoq" path="res://scenes/fishing_rod.tscn" id="1_2yxpx"]
+
+[node name="FishingGame" type="Node" unique_id=576867901]
+
+[node name="FishingRod" parent="." unique_id=1266390979 instance=ExtResource("1_2yxpx")]
+position = Vector2(180, 566)

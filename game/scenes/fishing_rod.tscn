@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://dxip70ggxxqoq"]
+
+[ext_resource type="Script" uid="uid://xkw330k0jfo8" path="res://scripts/fishing_rod.gd" id="1_h4s14"]
+[ext_resource type="Texture2D" uid="uid://c37ko2e34sqrv" path="res://assets/sprites/floater.png" id="2_1xn5j"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_binnr"]
+atlas = ExtResource("2_1xn5j")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7l55x"]
+atlas = ExtResource("2_1xn5j")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_74esa"]
+atlas = ExtResource("2_1xn5j")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lwwt6"]
+atlas = ExtResource("2_1xn5j")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_nswio"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_binnr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7l55x")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_74esa")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lwwt6")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="FishingRod" type="Node2D" unique_id=1266390979 node_paths=PackedStringArray("floater_base", "floater_sprite")]
+script = ExtResource("1_h4s14")
+angle_speed = 33.935
+max_angle = 39.295
+floater_base = NodePath("Rod/RodeBase/FloaterBase")
+floater_sprite = NodePath("Rod/RodeBase/FloaterBase/AnimatedSprite2D")
+
+[node name="Rod" type="Line2D" parent="." unique_id=513118077]
+points = PackedVector2Array(0, 0, 0, -300)
+default_color = Color(0.39131096, 0.14439899, 0.05465004, 1)
+
+[node name="Rope" type="Line2D" parent="Rod" unique_id=763745613]
+
+[node name="RodeBase" type="Node2D" parent="Rod" unique_id=898361277]
+position = Vector2(-1, -299)
+
+[node name="FloaterBase" type="Node2D" parent="Rod/RodeBase" unique_id=1752877959]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Rod/RodeBase/FloaterBase" unique_id=644971349]
+sprite_frames = SubResource("SpriteFrames_nswio")
+frame_progress = 0.45870653
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="Rod/RodeBase/FloaterBase" unique_id=655465908]
+position = Vector2(0, -40)
+rect = Rect2(-1, -1, 2, 2)
+
+[connection signal="screen_exited" from="Rod/RodeBase/FloaterBase/VisibleOnScreenNotifier2D" to="." method="_on_visible_on_screen_notifier_2d_screen_exited"]
