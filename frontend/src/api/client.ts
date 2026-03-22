@@ -43,34 +43,6 @@ export async function verifyPayment(data: {
   return res.json();
 }
 
-export async function fetchQuiz(tripId: number) {
-  const res = await fetch(`${API_BASE}/quiz/${tripId}`);
-  return res.json();
-}
-
-export async function submitQuizAnswer(data: {
-  tripId: number;
-  memberTelegramId: number;
-  questionId: number;
-  answerIndex: number;
-}) {
-  const res = await fetch(`${API_BASE}/quiz/answer`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return res.json();
-}
-
-export async function endQuiz(tripId: number) {
-  const res = await fetch(`${API_BASE}/quiz/end`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tripId }),
-  });
-  return res.json();
-}
-
 export async function registerWallet(data: {
   tripId: number;
   memberTelegramId: number;

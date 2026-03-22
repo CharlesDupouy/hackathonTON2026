@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { fetchPayments, fetchWallet, verifyPayment, registerWallet, fetchWalletStatus } from '../api/client';
 import { useTelegram } from '../hooks/useTelegram';
@@ -21,7 +21,6 @@ interface WalletStatus {
 
 function PaymentFlow() {
   const { user } = useTelegram();
-  const navigate = useNavigate();
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
   const [searchParams] = useSearchParams();
@@ -143,10 +142,12 @@ function PaymentFlow() {
     return () => clearInterval(interval);
   }, [tripId, allWalletsCollected, allPaid]);
 
-  // Navigate to quiz when all paid
+  // Close Mini App when all paid — game is played via bot DM
   useEffect(() => {
     if (allPaid) {
-      const timer = setTimeout(() => navigate(`/quiz?tripId=${tripId}`), 2000);
+      const timer = setTimeout(() => {
+        window.Telegram?.WebApp?.close();
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [allPaid]);
@@ -278,7 +279,8 @@ function PaymentFlow() {
 
       {allPaid && (
         <div className="card" style={{ textAlign: 'center' }}>
-          <p>🎮 All paid! The quiz is about to begin...</p>
+          <p>🎮 All paid! Check your private chat with the bot to play the game!</p>
+          <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>This window will close automatically...</p>
         </div>
       )}
     </div>

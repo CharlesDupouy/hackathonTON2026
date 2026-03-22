@@ -3,7 +3,7 @@ import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import ExpenseForm from './components/ExpenseForm';
 import BalanceView from './components/BalanceView';
 import PaymentFlow from './components/PaymentFlow';
-import QuizGame from './components/QuizGame';
+
 
 // TON Connect manifest (must be publicly accessible)
 const MANIFEST_URL = `${window.location.origin}/tonconnect-manifest.json`;
@@ -27,7 +27,6 @@ function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/add" element={<ExpenseForm />} />
             <Route path="/pay" element={<PaymentFlow />} />
-            <Route path="/quiz" element={<QuizGame />} />
           </Routes>
         </div>
       </BrowserRouter>

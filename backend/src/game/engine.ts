@@ -1,41 +1,40 @@
-import { QuizQuestion } from '../types';
-import { getRandomQuestions, getQuestionById } from './questions';
 import { calculateSpenderAdvantage, calculatePayouts } from '../core/settlement';
 import * as queries from '../db/queries';
 
-// In-memory quiz sessions (tripId -> quiz state)
-interface QuizSession {
+// In-memory game sessions (tripId -> game state)
+interface GameSession {
   tripId: number;
-  questions: QuizQuestion[];
-  memberScores: Map<number, number>;       // memberId -> total score
-  memberAnswered: Map<number, Set<number>>; // memberId -> set of answered questionIds
-  bonuses: Map<number, number>;             // memberId -> bonus % from spender advantage
+  chatId: number;
   prizePool: number;
+  expectedMembers: Map<number, number>; // telegramId -> memberId
+  playedMembers: Set<number>;           // memberIds who submitted scores
+  memberScores: Map<number, number>;    // memberId -> final score (with bonus applied)
+  bonuses: Map<number, number>;         // memberId -> spender advantage %
   startedAt: number;
 }
 
-const activeSessions = new Map<number, QuizSession>();
-
-const BASE_TIME_PER_QUESTION = 15; // seconds
-const POINTS_PER_CORRECT = 100;
+const activeSessions = new Map<number, GameSession>();
 
 /**
- * Start a quiz for a trip. Returns the questions (without correct answers).
+ * Start a game session for a trip. Called when all payments are collected.
  */
-export function startQuiz(tripId: number, prizePool: number): {
-  questions: Array<Omit<QuizQuestion, 'correctIndex'>>;
-  timePerQuestion: number;
-} {
-  const questions = getRandomQuestions(4);
+export function startGame(tripId: number, prizePool: number, chatId: number): GameSession {
+  const members = queries.getTripMembers(tripId);
   const bonuses = calculateSpenderAdvantage(tripId);
 
-  const session: QuizSession = {
+  const expectedMembers = new Map<number, number>();
+  for (const m of members) {
+    expectedMembers.set(m.telegram_id, m.id);
+  }
+
+  const session: GameSession = {
     tripId,
-    questions,
-    memberScores: new Map(),
-    memberAnswered: new Map(),
-    bonuses,
+    chatId,
     prizePool,
+    expectedMembers,
+    playedMembers: new Set(),
+    memberScores: new Map(),
+    bonuses,
     startedAt: Date.now(),
   };
 
@@ -44,56 +43,58 @@ export function startQuiz(tripId: number, prizePool: number): {
   // Update trip status
   queries.updateTripStatus(tripId, 'playing');
 
-  return {
-    questions: questions.map(({ correctIndex, ...q }) => q),
-    timePerQuestion: BASE_TIME_PER_QUESTION,
-  };
+  return session;
 }
 
 /**
- * Submit an answer for a member. Returns whether it was correct and the correct answer.
+ * Record a member's game score. Applies spender advantage bonus.
+ * Returns whether the score was recorded and if all members have played.
  */
-export function submitAnswer(
+export function recordScore(
   tripId: number,
   memberId: number,
-  questionId: number,
-  answerIndex: number
-): { correct: boolean; correctIndex: number; pointsEarned: number } {
+  rawScore: number
+): { recorded: boolean; rawScore: number; finalScore: number; bonusPct: number; allPlayed: boolean; duplicate?: boolean } {
   const session = activeSessions.get(tripId);
-  if (!session) throw new Error('No active quiz for this trip');
-
-  const question = getQuestionById(questionId);
-  if (!question) throw new Error('Question not found');
-
-  // Check if already answered
-  if (!session.memberAnswered.has(memberId)) {
-    session.memberAnswered.set(memberId, new Set());
-  }
-  const answered = session.memberAnswered.get(memberId)!;
-  if (answered.has(questionId)) {
-    return { correct: false, correctIndex: question.correctIndex, pointsEarned: 0 };
-  }
-  answered.add(questionId);
-
-  const correct = answerIndex === question.correctIndex;
-  let pointsEarned = 0;
-
-  if (correct) {
-    const bonus = session.bonuses.get(memberId) || 0;
-    pointsEarned = Math.round(POINTS_PER_CORRECT * (1 + bonus / 100));
-    session.memberScores.set(
-      memberId,
-      (session.memberScores.get(memberId) || 0) + pointsEarned
-    );
+  if (!session) {
+    return { recorded: false, rawScore, finalScore: 0, bonusPct: 0, allPlayed: false };
   }
 
-  return { correct, correctIndex: question.correctIndex, pointsEarned };
+  // Dedup: already played
+  if (session.playedMembers.has(memberId)) {
+    return { recorded: false, rawScore, finalScore: 0, bonusPct: 0, allPlayed: false, duplicate: true };
+  }
+
+  // Apply spender advantage bonus
+  const bonusPct = session.bonuses.get(memberId) || 0;
+  const finalScore = Math.round(rawScore * (1 + bonusPct / 100));
+
+  session.playedMembers.add(memberId);
+  session.memberScores.set(memberId, finalScore);
+
+  const allPlayed = session.playedMembers.size >= session.expectedMembers.size;
+
+  return { recorded: true, rawScore, finalScore, bonusPct, allPlayed };
 }
 
 /**
- * End the quiz and calculate final results.
+ * Find which active game a Telegram user belongs to.
+ * Needed because web_app_data arrives in private chat (no group context).
  */
-export function endQuiz(tripId: number): Array<{
+export function findTripByMember(telegramId: number): { tripId: number; memberId: number } | undefined {
+  for (const [tripId, session] of activeSessions) {
+    const memberId = session.expectedMembers.get(telegramId);
+    if (memberId !== undefined) {
+      return { tripId, memberId };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Finalize the game: calculate payouts, save results, clean up.
+ */
+export function finalizeGame(tripId: number): Array<{
   member_id: number;
   username: string | null;
   score: number;
@@ -102,7 +103,7 @@ export function endQuiz(tripId: number): Array<{
 }> {
   const session = activeSessions.get(tripId);
   if (!session) {
-    // Session already ended by another player — return saved results from DB
+    // Session already finalized — return saved results from DB
     const saved = queries.getGameResults(tripId);
     if (saved.length > 0) {
       return saved.map((r) => ({
@@ -113,7 +114,7 @@ export function endQuiz(tripId: number): Array<{
         payout_delta: r.payout_delta,
       }));
     }
-    throw new Error('No active quiz for this trip');
+    throw new Error('No active game for this trip');
   }
 
   const members = queries.getTripMembers(tripId);
@@ -126,13 +127,13 @@ export function endQuiz(tripId: number): Array<{
     });
   }
 
-  // Calculate payouts: creditors get base minus margin, top half splits effective pool
+  // Calculate payouts
   const balances = queries.getBalances(tripId);
   const trip = queries.getTripById(tripId);
   const marginPct = trip?.margin_pct || 10;
   const payouts = calculatePayouts(session.prizePool, marginPct, balances, results);
 
-  // Save results to DB (payout_delta = total TON to receive from the bot)
+  // Save results to DB
   const finalResults = members.map((member) => {
     const score = session.memberScores.get(member.id) || 0;
     const bonusPct = session.bonuses.get(member.id) || 0;
@@ -161,10 +162,9 @@ export function endQuiz(tripId: number): Array<{
   return finalResults;
 }
 
-export function getQuizSession(tripId: number): QuizSession | undefined {
+/**
+ * Get the game session for a trip (if active).
+ */
+export function getGameSession(tripId: number): GameSession | undefined {
   return activeSessions.get(tripId);
-}
-
-export function isQuizActive(tripId: number): boolean {
-  return activeSessions.has(tripId);
 }
